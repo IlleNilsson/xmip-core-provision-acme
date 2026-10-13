@@ -1,42 +1,41 @@
-# Xmip repository template — Rust
+# xmip-core-provision-acme
 
-This repository is the starter snapshot for a Rust Xmip module repository. It is
-not an Xmip runtime capability.
+ACME (RFC 8555): a node obtains and renews its certificate from any ACME
+directory its configuration names. A technology of
+[xmip-core-provision](https://github.com/IlleNilsson/xmip-core-provision).
 
-For a .NET 11 surface — the CLI, the PowerShell module, the MAUI desktop GUI or
-the Blazor web GUI — use
-[xmip-template-dotnet](https://github.com/IlleNilsson/xmip-template-dotnet)
-instead. ADR-0014: every user-interfacing module is .NET 11, and
-`xmip-core-abi` is the exception.
+Let's Encrypt's directory is one value a node may name, never a default (the
+owner, 2026-10-13: *As an option*). The cluster's own authority
+(`internal-ca`) answers ACME too, and so does any authority an end user runs.
 
-A repository generated from this template has independent history. Later
-template changes do not automatically rewrite generated repositories.
+## What it does
 
-## Before implementation
+The directory read, a nonce, an account opened by a P-256 key signing JWS
+with ES256 and kept in the purpose's place across renewals, an order placed,
+each name proven, the order finalized with a CSR and the chain fetched — over
+Xmip's own HTTP and TLS (`xmip-core-library-net`, `xmip-core-library-tls`).
+The directory's certificate is checked against the anchors a node names, or
+the operating system's trust store. A certificate that does not serve the
+purpose asked — one without client authentication, asked for `node` — is
+refused in words: Let's Encrypt has issued server authentication alone since
+2026-07-08.
 
-Follow [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md), and item 3 first. The new
-repository must be classified and declared in the authoritative Xmip
-architecture manifest before its responsibility or dependencies are treated as
-accepted architecture.
+- **http-01** — the answer listens on any port the node names
+  (`challenge_listen`, `0.0.0.0:80` unless said); the authority asks on port
+  80, so a node listening elsewhere is reached through forwarding (the
+  owner, 2026-10-13: *On any port*). It listens only while an order is
+  answered.
+- **dns-01** — a TXT record at `_acme-challenge.<domain>`, written through a
+  `DnsWriter` a DNS provider's module implements; no port. Xmip ships none
+  for a vendor.
+- **tls-alpn-01** — not built.
 
-## Toolchain
-
-`rust-toolchain.toml` pins the toolchain for the whole estate. rustup reads it
-automatically and installs what is missing. Do not change it here — raising it
-is one deliberate change across every repository.
-
-## Shared governance
-
-Repository-specific licensing remains explicit in [LICENSE](LICENSE).
-Contribution, security, support, issue and pull-request defaults are inherited
-from [IlleNilsson/.github](https://github.com/IlleNilsson/.github) when they are
-not overridden locally.
+`Acme` is the `provision::Source`; `SETTINGS` its declaration. `jws`, `Jwk`,
+the `http01` answer and `Listening` are the carrier `internal-ca` serves ACME
+from (ADR-0044 clause 1).
 
 ## Verification
 
-The included workflow is manual-only and calls the versioned shared workflow at
-`IlleNilsson/.github@v1`. It does not run on pushes, pull requests or a
-schedule.
-
-The ordered stages are formatting, semantic analysis, linting, compilation and
-linking, and test execution. Packaging and publishing are not configured.
+Unit tests here; the whole exchange is proved in `internal-ca`'s tests
+against its ACME server, offline. The workflow is manual-only and calls the
+versioned shared workflow at `IlleNilsson/.github@v1`.
