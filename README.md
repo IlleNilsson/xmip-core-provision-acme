@@ -11,7 +11,9 @@ owner, 2026-10-13: *As an option*). The cluster's own authority
 ## What it does
 
 The directory read, a nonce, an account opened by a P-256 key signing JWS
-with ES256 and kept in the purpose's place across renewals, an order placed,
+with ES256 and kept in the purpose's place across renewals — a private file
+(`xmip-core-secret`'s `private_file`), made once and never written over —
+an order placed,
 each name proven, the order finalized with a CSR and the chain fetched — over
 Xmip's own HTTP and TLS (`xmip-core-library-net`, `xmip-core-library-tls`).
 The directory's certificate is checked against the anchors a node names, or

@@ -145,18 +145,22 @@ impl Acme {
         })
     }
 
-    /// The account key the purpose's place keeps, made the first time.
+    /// The account key the purpose's place keeps, made the first time as a
+    /// private file (`secret::private_file`), never over one: a replaced
+    /// account key is the account, lost. What a crash left between writing
+    /// a file and naming it is swept first (`secret::private_file::sweep`).
     fn account_key(keep: &Path) -> Result<KeyPair> {
+        secret::private_file::sweep(keep).map_err(|failure| {
+            ProvisionError::new(format!("sweeping {}: {failure}", keep.display()))
+        })?;
         let path = keep.join(ACCOUNT_KEY);
         match std::fs::read_to_string(&path) {
             Ok(pem) => KeyPair::from_pem(&pem),
             Err(failure) if failure.kind() == std::io::ErrorKind::NotFound => {
                 let key = KeyPair::generate()?;
-                std::fs::create_dir_all(keep)
-                    .and_then(|()| std::fs::write(&path, key.pem().as_bytes()))
-                    .map_err(|failure| {
-                        ProvisionError::new(format!("writing {}: {failure}", path.display()))
-                    })?;
+                secret::private_file::create(&path, key.pem().as_bytes()).map_err(|failure| {
+                    ProvisionError::new(format!("writing {}: {failure}", path.display()))
+                })?;
                 Ok(key)
             }
             Err(failure) => Err(ProvisionError::new(format!(
@@ -205,6 +209,30 @@ impl Source for Acme {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_account_key_is_made_once_as_a_private_file() {
+        let keep = std::env::temp_dir()
+            .join(format!("xmip-acme-account-{}", std::process::id()))
+            .join("receive");
+        let _ = std::fs::remove_dir_all(keep.parent().expect("base"));
+        let made = Acme::account_key(&keep).expect("made");
+        let again = Acme::account_key(&keep).expect("read");
+        assert_eq!(made.public_key_info(), again.public_key_info());
+        let path = keep.join(ACCOUNT_KEY);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let bits = std::fs::metadata(&path).expect("metadata").mode() & 0o777;
+            assert_eq!(bits, 0o600);
+        }
+        #[cfg(windows)]
+        assert_eq!(
+            secret::private_file::described(&path).expect("described"),
+            secret::private_file::owner_only(false).expect("owner only")
+        );
+        let _ = std::fs::remove_dir_all(keep.parent().expect("base"));
+    }
 
     #[test]
     fn the_declaration_is_sound_and_names_no_authority_as_a_default() {
