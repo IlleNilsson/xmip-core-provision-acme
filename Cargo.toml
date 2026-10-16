@@ -29,6 +29,9 @@ codec = { package = "xmip-core-library-codec", git = "https://github.com/IlleNil
 # elsewhere (authenticate's jose).
 serde_json = "1"
 zeroize = "1"
+# The account key is a private file, written once in the key home
+# (secret::private_file).
+secret = { package = "xmip-core-secret", git = "https://github.com/IlleNilsson/xmip-core-secret", branch = "main" }
 
 [lints.rust]
 # forbid, not deny: a module has no business writing unsafe. The one exception
