@@ -88,16 +88,10 @@ impl Drop for Listening {
     /// own, the thread joined.
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
-        let mut wake = self.address;
-        if wake.ip().is_unspecified() {
-            wake.set_ip(match wake {
-                SocketAddr::V4(_) => std::net::Ipv4Addr::LOCALHOST.into(),
-                SocketAddr::V6(_) => std::net::Ipv6Addr::LOCALHOST.into(),
-            });
-        }
-        let _ = TcpStream::connect_timeout(&wake, WAKE);
+        // Knocked until it has heard (`net::accepting`).
         if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+            let address = self.address;
+            let _ = net::accepting::woken(thread, WAKE, || net::accepting::knock(address, WAKE));
         }
     }
 }
