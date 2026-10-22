@@ -32,6 +32,15 @@ refused in words: Let's Encrypt has issued server authentication alone since
   for a vendor.
 - **tls-alpn-01** — not built.
 
+- **Renewal information and revocation**: where a directory offers them,
+  `Client::renewal_window` asks the window it suggests a certificate is
+  renewed in (RFC 9773) and `Client::revoke` revokes one (RFC 8555 section
+  7.6). The provisioner still renews at two thirds of the life it read,
+  where the cluster authority's window opens.
+- **A node's certificate** names the cluster authority's anchor as
+  `anchors`: a `[provision.node]` trusting the operating system's store is
+  refused (the owner, 2026-10-22).
+
 `Acme` is the `provision::Source`; `SETTINGS` its declaration. `jws`, `Jwk`,
 the `http01` answer and `Listening` are the carrier `internal-ca` serves ACME
 from (ADR-0044 clause 1).

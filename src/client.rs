@@ -43,6 +43,10 @@ pub struct Client {
     channel: Channel,
     new_nonce: String,
     new_order: String,
+    /// Where the directory offers renewal information (RFC 9773), and
+    /// revocation (RFC 8555 section 7.6).
+    renewal_info: Option<String>,
+    revoke_cert: Option<String>,
     key: KeyPair,
     account: Signer,
 }
@@ -92,7 +96,15 @@ impl Client {
             .header_value("location")
             .ok_or_else(|| ProvisionError::new("the ACME server gave the account no URL"))?
             .to_string();
+        let offered = |name: &str| {
+            described
+                .get(name)
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
         Ok(Self {
+            renewal_info: offered("renewalInfo"),
+            revoke_cert: offered("revokeCert"),
             channel,
             new_nonce,
             new_order,
@@ -142,6 +154,60 @@ impl Client {
         let chain = String::from_utf8(chain.body)
             .map_err(|_| ProvisionError::new("the certificate chain is not text"))?;
         Ok((chain, key))
+    }
+
+    /// The window the server suggests the leaf of `chain` is renewed in,
+    /// seconds since the epoch, where its directory offers renewal
+    /// information (RFC 9773 section 4.2); `None` where it offers none.
+    ///
+    /// # Errors
+    ///
+    /// Where the leaf names no authority key identifier, or the server
+    /// does not answer with a window.
+    pub fn renewal_window(&self, chain: &str) -> Result<Option<(i64, i64)>> {
+        let Some(base) = &self.renewal_info else {
+            return Ok(None);
+        };
+        let identifier = provision::renewal::identifier(&provision::Parsed::first(chain)?)?;
+        let answer = self.channel.get(&format!("{base}/{identifier}"))?;
+        if answer.status != 200 {
+            let (kind, detail) = crate::problem(&answer);
+            return Err(ProvisionError::new(format!(
+                "the ACME server gave no renewal information: {kind}: {detail}"
+            )));
+        }
+        let object = json(&answer)?;
+        let moment = |end: &str| {
+            object
+                .pointer(&format!("/suggestedWindow/{end}"))
+                .and_then(Value::as_str)
+                .and_then(codec::civil::read_rfc3339)
+                .and_then(|nanos| i64::try_from(nanos / 1_000_000_000).ok())
+                .ok_or_else(|| ProvisionError::new(format!("the suggested window has no {end}")))
+        };
+        Ok(Some((moment("start")?, moment("end")?)))
+    }
+
+    /// Revoke the leaf of `chain`, issued to this account, for the reason
+    /// `reason` codes (RFC 5280 section 5.3.1).
+    ///
+    /// # Errors
+    ///
+    /// Where the directory offers no revocation, or the server refuses.
+    pub fn revoke(&self, chain: &str, reason: u8) -> Result<()> {
+        let url = self
+            .revoke_cert
+            .clone()
+            .ok_or_else(|| ProvisionError::new("the ACME directory offers no revokeCert"))?;
+        let leaf = provision::pem::decode("CERTIFICATE", chain)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| ProvisionError::new("the chain holds no certificate"))?;
+        let payload = json!({
+            "certificate": codec::base64::encode_url_unpadded(&leaf),
+            "reason": reason,
+        });
+        self.post(&url, Some(&payload)).map(|_| ())
     }
 
     /// The authorizations of `order` not yet valid, each with its challenge
