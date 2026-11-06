@@ -7,8 +7,9 @@
 //! system's trust store, which a public authority such as Let's Encrypt is
 //! reached through. ACME is HTTPS only (RFC 8555 section 6.1).
 
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use xcore::lock::Locked;
 
 use net::http::{Request, Response, exchange};
 use provision::{KeyPair, ProvisionError, Result};
@@ -71,12 +72,7 @@ impl Channel {
         new_nonce: &str,
     ) -> Result<Response> {
         for attempt in 0..2 {
-            if self
-                .nonce
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .is_none()
-            {
+            if self.nonce.locked().is_none() {
                 self.get(new_nonce)?;
             }
             let nonce = self
@@ -125,16 +121,13 @@ impl Channel {
         .map_err(|failure| ProvisionError::new(failure.message))?;
         let answer = exchange(stream, &request).map_err(failed)?;
         if let Some(nonce) = answer.header_value("replay-nonce") {
-            *self.nonce.lock().unwrap_or_else(PoisonError::into_inner) = Some(nonce.to_string());
+            *self.nonce.locked() = Some(nonce.to_string());
         }
         Ok(answer)
     }
 
     fn take_nonce(&self) -> Option<String> {
-        self.nonce
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take()
+        self.nonce.locked().take()
     }
 }
 
