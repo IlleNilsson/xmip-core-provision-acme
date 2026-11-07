@@ -220,17 +220,17 @@ mod tests {
         let again = Acme::account_key(&keep).expect("read");
         assert_eq!(made.public_key_info(), again.public_key_info());
         let path = keep.join(ACCOUNT_KEY);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::MetadataExt;
-            let bits = std::fs::metadata(&path).expect("metadata").mode() & 0o777;
-            assert_eq!(bits, 0o600);
+        cfg_select! {
+            unix => {{
+                use std::os::unix::fs::MetadataExt;
+                let bits = std::fs::metadata(&path).expect("metadata").mode() & 0o777;
+                assert_eq!(bits, 0o600);
+            }}
+            windows => assert_eq!(
+                secret::private_file::described(&path).expect("described"),
+                secret::private_file::owner_only(false).expect("owner only")
+            ),
         }
-        #[cfg(windows)]
-        assert_eq!(
-            secret::private_file::described(&path).expect("described"),
-            secret::private_file::owner_only(false).expect("owner only")
-        );
         let _ = std::fs::remove_dir_all(keep.parent().expect("base"));
     }
 
