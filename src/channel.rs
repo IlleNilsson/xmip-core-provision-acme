@@ -114,11 +114,8 @@ impl Channel {
         let tcp = net::connect((host.trim_matches(['[', ']']), port), Some(self.timeout))
             .map_err(failed)?;
         let host = host.trim_matches(['[', ']']);
-        let stream = match &self.config {
-            Some(config) => tls::client_with(host, tcp, Arc::clone(config)),
-            None => tls::client(host, tcp),
-        }
-        .map_err(|failure| ProvisionError::new(failure.message))?;
+        let stream = tls::client_trusting(host, tcp, self.config.as_ref())
+            .map_err(|failure| ProvisionError::new(failure.message))?;
         let answer = exchange(stream, &request).map_err(failed)?;
         if let Some(nonce) = answer.header_value("replay-nonce") {
             *self.nonce.locked() = Some(nonce.to_string());
