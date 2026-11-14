@@ -3,7 +3,8 @@
 //! 8555 section 8.1).
 
 use codec::base64::{decode_url, encode_url_unpadded};
-use provision::{ProvisionError, Result, sha256};
+use codec::digest::sha256;
+use provision::{ProvisionError, Result};
 use serde_json::{Value, json};
 
 /// A P-256 public key as JWK: its two coordinates.

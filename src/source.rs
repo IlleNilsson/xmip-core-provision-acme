@@ -186,7 +186,7 @@ impl Source for Acme {
             self.agree_terms,
         )?;
         let (chain, key) = client.certificate(order.names, &self.challenge, self.wait)?;
-        let leaf = provision::pem::decode("CERTIFICATE", &chain)?
+        let leaf = codec::pem::decode("CERTIFICATE", &chain)?
             .into_iter()
             .next()
             .ok_or_else(|| ProvisionError::new("the ACME server's chain holds no certificate"))?;

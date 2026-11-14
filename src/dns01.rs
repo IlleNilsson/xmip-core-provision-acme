@@ -8,7 +8,8 @@
 //! owner leaves vendors to providers).
 
 use codec::base64::encode_url_unpadded;
-use provision::{Result, sha256};
+use codec::digest::sha256;
+use provision::Result;
 
 /// Writes and removes a domain's TXT records: what a DNS provider's module
 /// implements so a node can answer dns-01.
