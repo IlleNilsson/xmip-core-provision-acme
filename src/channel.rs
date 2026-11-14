@@ -22,7 +22,8 @@ const JOSE: &str = "application/jose+json";
 
 /// The way to one ACME server.
 pub struct Channel {
-    config: Option<Arc<tls::ClientConfig>>,
+    /// What the ACME server's certificate is checked by.
+    settings: tls::ClientSettings,
     timeout: Duration,
     nonce: Mutex<Option<String>>,
 }
@@ -35,12 +36,14 @@ impl Channel {
     ///
     /// Where `anchors` holds no certificate a trust store takes.
     pub fn new(anchors: Option<&str>, timeout: Duration) -> Result<Self> {
-        let config = anchors
-            .map(|pem| tls::trusting(pem.as_bytes()).map(Arc::new))
-            .transpose()
-            .map_err(|failure| ProvisionError::new(failure.message))?;
+        let settings = match anchors {
+            Some(pem) => tls::trusting(pem.as_bytes())
+                .map(|config| tls::ClientSettings::trusting(Arc::new(config)))
+                .map_err(|failure| ProvisionError::new(failure.message))?,
+            None => tls::ClientSettings::native(),
+        };
         Ok(Self {
-            config,
+            settings,
             timeout,
             nonce: Mutex::new(None),
         })
@@ -114,7 +117,9 @@ impl Channel {
         let tcp = net::connect((host.trim_matches(['[', ']']), port), Some(self.timeout))
             .map_err(failed)?;
         let host = host.trim_matches(['[', ']']);
-        let stream = tls::client_trusting(host, tcp, self.config.as_ref())
+        let stream = self
+            .settings
+            .client(host, tcp)
             .map_err(|failure| ProvisionError::new(failure.message))?;
         let answer = exchange(stream, &request).map_err(failed)?;
         if let Some(nonce) = answer.header_value("replay-nonce") {

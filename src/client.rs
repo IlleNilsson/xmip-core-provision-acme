@@ -168,7 +168,8 @@ impl Client {
         let Some(base) = &self.renewal_info else {
             return Ok(None);
         };
-        let identifier = provision::renewal::identifier(&provision::Parsed::first(chain)?)?;
+        let identifier =
+            provision::renewal::identifier(&tls::certificate::Certificate::first(chain)?)?;
         let answer = self.channel.get(&format!("{base}/{identifier}"))?;
         if answer.status != 200 {
             let (kind, detail) = crate::problem(&answer);
@@ -199,7 +200,7 @@ impl Client {
             .revoke_cert
             .clone()
             .ok_or_else(|| ProvisionError::new("the ACME directory offers no revokeCert"))?;
-        let leaf = provision::pem::decode("CERTIFICATE", chain)?
+        let leaf = codec::pem::decode("CERTIFICATE", chain)?
             .into_iter()
             .next()
             .ok_or_else(|| ProvisionError::new("the chain holds no certificate"))?;
