@@ -11,9 +11,11 @@
 //! trust store.
 //!
 //! **The steps** (section 7): the directory read, a nonce, an account opened
-//! by a P-256 key signing JWS with ES256 ([`jws`]) and kept across
-//! renewals, an order placed, each name proven, the order finalized with a
-//! CSR and the chain fetched ([`Client`]).
+//! by a P-256 key signing JWS with ES256 ([`signed`]) and kept across
+//! renewals, an order placed, each name proven ([`key_authorization`]), the
+//! order finalized with a CSR and the chain fetched ([`Client`]). The JWS
+//! and the account key's JWK are the estate's one JOSE
+//! (`xmip-core-library-jose`).
 //!
 //! **Proving a name.** http-01 ([`http01`]) answers on any port the node
 //! names; the authority asks on port 80, so a node listening elsewhere is
@@ -33,14 +35,14 @@ mod channel;
 mod client;
 pub mod dns01;
 pub mod http01;
-mod jwk;
-pub mod jws;
+mod key_authorization;
 mod listening;
+pub mod signed;
 mod source;
 
 pub use channel::{Channel, json, problem};
 pub use client::{Challenge, Client};
 pub use dns01::DnsWriter;
-pub use jwk::Jwk;
+pub use key_authorization::key_authorization;
 pub use listening::Listening;
 pub use source::{Acme, SETTINGS, TECHNOLOGY};

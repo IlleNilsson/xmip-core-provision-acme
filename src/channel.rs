@@ -15,7 +15,7 @@ use net::http::{Request, Response, exchange};
 use provision::{KeyPair, ProvisionError, Result};
 use serde_json::Value;
 
-use crate::jws::{Signer, sign};
+use crate::signed::{Signer, sign};
 
 /// The media type every signed request carries.
 const JOSE: &str = "application/jose+json";

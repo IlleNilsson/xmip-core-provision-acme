@@ -41,9 +41,19 @@ refused in words: Let's Encrypt has issued server authentication alone since
   `anchors`: a `[provision.node]` trusting the operating system's store is
   refused (the owner, 2026-10-22).
 
-`Acme` is the `provision::Source`; `SETTINGS` its declaration. `jws`, `Jwk`,
-the `http01` answer and `Listening` are the carrier `internal-ca` serves ACME
-from (ADR-0044 clause 1).
+`Acme` is the `provision::Source`; `SETTINGS` its declaration. `signed` — a
+request's JWS as RFC 8555 section 6.2 has it, signed and read —
+`key_authorization`, the `http01` answer and `Listening` are the carrier
+`internal-ca` serves ACME from (ADR-0044 clause 1).
+
+The JWS itself, flattened, and the account key's JWK, its thumbprint (RFC
+7638) and its ES256 check are the estate's one JOSE,
+`xmip-core-library-jose`; the account's key pair signs through the
+library's `SigningKey`, so its private half stays in `xmip-core-provision`.
+Until 2026-11-16 this crate wrote a JWK and a JWS of its own and checked
+the signature through provisioning; a request's parts are now refused
+padded, its members named twice, and its key's point off the curve
+(ADR-0034, amendment 2026-11-16).
 
 ## Verification
 

@@ -5,14 +5,15 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use jose::jwk::Key;
 use provision::{KeyPair, ProvisionError, Result, csr};
 use serde_json::{Value, json};
 
-use crate::Jwk;
 use crate::channel::{Channel, json};
 use crate::dns01::{DnsWriter, record_name, record_value};
 use crate::http01::Answering;
-use crate::jws::Signer;
+use crate::key_authorization;
+use crate::signed::Signer;
 
 /// How a node proves it controls a name.
 #[derive(Clone)]
@@ -90,7 +91,7 @@ impl Client {
         if let Some(contact) = contact {
             payload["contact"] = json!([contact]);
         }
-        let signer = Signer::Key(Jwk::from_point(key.point())?);
+        let signer = Signer::Key(Key::p256_point(None, key.point())?);
         let answer = channel.post(&key, &signer, &new_account, Some(&payload), &new_nonce)?;
         let account = answer
             .header_value("location")
@@ -141,8 +142,8 @@ impl Client {
         let order = json(&answer)?;
 
         let pending = self.pending(&order, challenge)?;
-        let thumbprint = Jwk::from_point(self.key.point())?;
-        let proven = self.prove(&pending, challenge, &thumbprint, deadline);
+        let account = Key::p256_point(None, self.key.point())?;
+        let proven = self.prove(&pending, challenge, &account, deadline);
         proven?;
 
         let key = KeyPair::generate()?;
@@ -255,16 +256,16 @@ impl Client {
         &self,
         pending: &[Pending],
         challenge: &Challenge,
-        account: &Jwk,
+        account: &Key,
         deadline: Instant,
     ) -> Result<()> {
         if pending.is_empty() {
             return Ok(());
         }
-        let authorizations: Vec<(String, String)> = pending
+        let authorizations = pending
             .iter()
-            .map(|one| (one.token.clone(), account.key_authorization(&one.token)))
-            .collect();
+            .map(|one| Ok((one.token.clone(), key_authorization(account, &one.token)?)))
+            .collect::<Result<Vec<(String, String)>>>()?;
         let _answering = match challenge {
             Challenge::Http01 { listen } => Some(Answering::start(listen, authorizations.clone())?),
             Challenge::Dns01(_) => None,

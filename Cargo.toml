@@ -23,10 +23,14 @@ xcore = { package = "xmip-core", git = "https://github.com/IlleNilsson/xmip-core
 # dogfooding): the request and its answer, the connection, the URL.
 net = { package = "xmip-core-library-net", git = "https://github.com/IlleNilsson/xmip-core-library-net", branch = "main" }
 tls = { package = "xmip-core-library-tls", git = "https://github.com/IlleNilsson/xmip-core-library-tls", branch = "main" }
-# Base64url for JWS and the certificate request.
+# Base64url for the certificate request, SHA-256 for a dns-01 record.
 codec = { package = "xmip-core-library-codec", git = "https://github.com/IlleNilsson/xmip-core-library-codec", branch = "main" }
+# The JWS every request is and the account key's JWK and thumbprint, written
+# and checked by the estate's one JOSE: the client signs with it and the
+# authority that serves ACME (internal-ca) verifies with it.
+jose = { package = "xmip-core-library-jose", git = "https://github.com/IlleNilsson/xmip-core-library-jose", branch = "main", features = ["key"] }
 # ACME's objects are JSON (RFC 8555 section 7), as the estate reads JSON
-# elsewhere (authenticate's jose).
+# elsewhere (jose).
 serde_json = "1"
 zeroize = "1"
 # The account key is a private file, written once in the key home
