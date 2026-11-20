@@ -212,10 +212,8 @@ mod tests {
 
     #[test]
     fn the_account_key_is_made_once_as_a_private_file() {
-        let keep = std::env::temp_dir()
-            .join(format!("xmip-acme-account-{}", std::process::id()))
-            .join("receive");
-        let _ = std::fs::remove_dir_all(keep.parent().expect("base"));
+        let base = file::temporary::Folder::new("acme-account");
+        let keep = base.join("receive");
         let made = Acme::account_key(&keep).expect("made");
         let again = Acme::account_key(&keep).expect("read");
         assert_eq!(made.public_key_info(), again.public_key_info());
@@ -226,12 +224,13 @@ mod tests {
                 let bits = std::fs::metadata(&path).expect("metadata").mode() & 0o777;
                 assert_eq!(bits, 0o600);
             }}
-            windows => assert_eq!(
-                secret::private_file::described(&path).expect("described"),
-                secret::private_file::owner_only(false).expect("owner only")
-            ),
+            windows => {{
+                assert_eq!(
+                    secret::private_file::described(&path).expect("described"),
+                    secret::private_file::owner_only(false).expect("owner only")
+                );
+            }}
         }
-        let _ = std::fs::remove_dir_all(keep.parent().expect("base"));
     }
 
     #[test]

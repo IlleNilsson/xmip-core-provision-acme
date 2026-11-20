@@ -37,6 +37,10 @@ zeroize = "1"
 # (secret::private_file).
 secret = { package = "xmip-core-secret", git = "https://github.com/IlleNilsson/xmip-core-secret", branch = "main" }
 
+[dev-dependencies]
+# A test's own temporary folder (`file::temporary`); for the tests only.
+file = { package = "xmip-core-library-file", git = "https://github.com/IlleNilsson/xmip-core-library-file", branch = "main", features = ["test-support"] }
+
 [lints.rust]
 # forbid, not deny: a module has no business writing unsafe. The one exception
 # in the estate is xmip-core-abi, which holds the extern "C" vtable over
