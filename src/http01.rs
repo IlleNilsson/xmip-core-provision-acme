@@ -13,7 +13,7 @@ use std::io::BufReader;
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
 
-use net::http::{Response, read_request, write_response};
+use net::http::{Response, read_request_or_refuse, write_response};
 use provision::Result;
 
 use crate::Listening;
@@ -50,15 +50,13 @@ impl Answering {
     }
 }
 
-/// One request answered: the key authorization for a token served, and
-/// 404 for anything else.
+/// One request answered: the key authorization for a token served, 404
+/// for anything else, and 400 for a request HTTP refuses.
 fn answer(connection: TcpStream, answers: &[(String, String)]) {
     let _ = connection.set_read_timeout(Some(ASKING));
     let _ = connection.set_write_timeout(Some(ASKING));
-    let Ok(mut writer) = connection.try_clone() else {
-        return;
-    };
-    let Ok(Some(request)) = read_request(&mut BufReader::new(connection)) else {
+    let mut connection = BufReader::new(connection);
+    let Ok(Some(request)) = read_request_or_refuse(&mut connection) else {
         return;
     };
     let found = request
@@ -71,7 +69,7 @@ fn answer(connection: TcpStream, answers: &[(String, String)]) {
             .body(authorization.as_bytes()),
         _ => Response::new(404),
     };
-    let _ = write_response(&mut writer, &response);
+    let _ = write_response(connection.get_mut(), &response);
 }
 
 #[cfg(test)]
@@ -93,6 +91,9 @@ mod tests {
             (200, &b"t1.print"[..])
         );
         assert_eq!(ask("/.well-known/acme-challenge/t2").status, 404);
+        let tcp = net::connect(serving.address(), Some(ASKING)).expect("connects");
+        let refused = Request::new("GET", "/").header("Host ", "x");
+        assert_eq!(exchange(tcp, &refused).expect("answer").status, 400);
         drop(serving);
         let held = std::net::TcpListener::bind("127.0.0.1:0").expect("a port");
         let taken = held.local_addr().expect("address").to_string();
