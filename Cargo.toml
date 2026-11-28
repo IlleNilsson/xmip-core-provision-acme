@@ -13,30 +13,30 @@ path = "src/lib.rs"
 [dependencies]
 # A Technology depends on its parent Capability, never the reverse
 # (repository-model.md): the key, the CSR, the purpose and the trait.
-provision = { package = "xmip-core-provision", git = "https://github.com/IlleNilsson/xmip-core-provision", branch = "main" }
+provision = { workspace = true }
 # The settings shape the technology declares its configuration in.
-xcore = { package = "xmip-core", git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
+xcore = { workspace = true }
 # Xmip's own HTTP and TLS, never a platform client (CONTRIBUTING.md,
 # dogfooding): the request and its answer, the connection, the URL.
-net = { package = "xmip-core-library-net", git = "https://github.com/IlleNilsson/xmip-core-library-net", branch = "main" }
-tls = { package = "xmip-core-library-tls", git = "https://github.com/IlleNilsson/xmip-core-library-tls", branch = "main" }
+net = { workspace = true }
+tls = { workspace = true }
 # Base64url for the certificate request, SHA-256 for a dns-01 record.
-codec = { package = "xmip-core-library-codec", git = "https://github.com/IlleNilsson/xmip-core-library-codec", branch = "main" }
+codec = { workspace = true }
 # The JWS every request is and the account key's JWK and thumbprint, written
 # and checked by the estate's one JOSE: the client signs with it and the
 # authority that serves ACME (internal-ca) verifies with it.
-jose = { package = "xmip-core-library-jose", git = "https://github.com/IlleNilsson/xmip-core-library-jose", branch = "main", features = ["key"] }
+jose = { workspace = true, features = ["key"] }
 # ACME's objects are JSON (RFC 8555 section 7), as the estate reads JSON
 # elsewhere (jose).
 serde_json = "1"
 zeroize = "1"
 # The account key is a private file, written once in the key home
 # (secret::private_file).
-secret = { package = "xmip-core-secret", git = "https://github.com/IlleNilsson/xmip-core-secret", branch = "main" }
+secret = { workspace = true }
 
 [dev-dependencies]
 # A test's own temporary folder (`file::temporary`); for the tests only.
-file = { package = "xmip-core-library-file", git = "https://github.com/IlleNilsson/xmip-core-library-file", branch = "main", features = ["test-support"] }
+file = { workspace = true, features = ["test-support"] }
 
 [lints]
 workspace = true
